@@ -3,6 +3,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <stdlib.h>
 #include "spell.h"
 
 
@@ -28,7 +29,44 @@ EXIT_RET:
     return ret;
 }
 
-
+void free_next(hashmap_t hash)
+{
+    if(hash!=NULL)
+    {
+        if(hash->next!=NULL)
+        {
+            free_next(hash->next);
+            hash->next = NULL;
+        }
+    }
+}
+void clean(hashmap_t hashtable[], char* mspell[])
+{
+    int i;
+    if(hashtable!=NULL)
+    {
+        for(i=0; i<HASH_SIZE; i++)
+        {
+            if(hashtable[i]!=NULL)
+            {
+                free_next(hashtable[i]);
+                free(hashtable[i]);
+                hashtable[i] = NULL;
+            }
+        }
+    }
+    if(mspell!=NULL)
+    {
+        for(i=0; i<MAX_MISSPELLED; i++)
+        {
+            if(mspell[i]!=NULL)
+            {
+                free(mspell[i]);
+                mspell[i]=NULL;
+            }
+        }
+    }
+}
 
 int _test_01()
 {
@@ -79,6 +117,7 @@ int _test_01()
     fclose(fd);
 
 EXIT_RET:
+    clean(hashtable, mspell);
     return ret;
 }
 int _test_02()
@@ -108,6 +147,7 @@ int _test_02()
     
 
 EXIT_RET:
+    clean(hashtable, NULL);
     return ret;
 }
 

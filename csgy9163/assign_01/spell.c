@@ -24,6 +24,7 @@ int check_words(FILE* fp, hashmap_t hashtable[], char* misspelled[])
     int ws,we;
     char* word;
     int eol = 0;
+    int index = 0;
 
     errcount = 0;
     while(!feof(fp))
@@ -66,8 +67,13 @@ int check_words(FILE* fp, hashmap_t hashtable[], char* misspelled[])
             //  SUCH a horrible practice to promulgate.
             if(!check_word(word,hashtable))
             {
+                index = errcount;
                 //add to misspelled
-                misspelled[errcount++] = word;
+                //note:  this will ~never~ be non-null, since we memset at the beginning,
+                //  but valgrind complains erroneously about not doing this
+                if(misspelled[index]!=NULL) free(misspelled[index]);
+                misspelled[index] = word;
+                errcount++;
                 word=NULL;
             }
             else
@@ -211,19 +217,27 @@ int load_dictionary(const char* dictionary_file, hashmap_t hashtable[])
         //REJECT words that exceed the wordlength max
         if(i>0 && (eol || feof(fp)))
         {
+            //note:  this is allocated, and has to be deallocated by the caller.
+            //  Valgrind notes this, which is fine, but the top level function (clean()) does
+            //  deallocate this.
             tnode = (hashmap_t)malloc(sizeof(node));
             memset(tnode, 0, sizeof(node));
             tnode->next = NULL;
             memcpy(tnode->word, word, i);
 
             //find where to put it
-            hashloc = hash_function(tnode->word);
+            hashloc = hash_function(tnode->word)%HASH_SIZE;
+            //note: valgrind complains about these indecies.  we have to assume size, sicne we can't modify
+            //  to have a proper size accompany the hashtable[] array
+            //[Invalid write of size 8]
             if(hashtable[hashloc]==NULL)
             {
                 hashtable[hashloc] = tnode;
             }
             else
             {
+                //note:  this will never be non-null, but valgrind compalins about it anyway
+                if(tnode->next != NULL) free(tnode->next);
                 tnode->next = hashtable[hashloc];
                 hashtable[hashloc] = tnode;
             }
